@@ -293,8 +293,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!document.getElemen
 function logout(){ SESSION=null; ROWS=[]; DATES=[]; document.getElementById('code').value=''; setView('login'); }
 
 function computeDates(){
-  const set = [...new Set(ROWS.map(r=>r.stat_date))].sort((a,b)=>a<b?1:-1);
-  DATES = set.length? set : [todayStr()];
+  // 始终包含真实今天：即便当前身份今天暂无成交，也把今天放在最前，避免默认回退到昨天造成误读
+  const t = todayStr();
+  const present = ROWS.map(r=>r.stat_date);
+  const set = [...new Set([t, ...present])].sort((a,b)=>a<b?1:-1);
+  DATES = set;
 }
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function updTime(){
@@ -305,8 +308,9 @@ function updTime(){
 
 function enterBoard(){
   computeDates();
-  if(SESSION.role==='manager'){ MGR_DATE=DATES[0]; setView('manager'); renderMgr(); }
-  else { STAFF_DATE=DATES[0]; setView('staff'); renderStaff(); }
+  const t = todayStr();               // 默认强制落在真实今天，无数据则空态；历史可在日期下拉切换
+  if(SESSION.role==='manager'){ MGR_DATE=t; setView('manager'); renderMgr(); }
+  else { STAFF_DATE=t; setView('staff'); renderStaff(); }
 }
 
 function setView(v){
@@ -316,7 +320,8 @@ function setView(v){
 
 // ===== 签约小二视图 =====
 function dateOptions(sel, cur){
-  return DATES.map(d=>`<option value="${d}" ${d===cur?'selected':''}>${d}${d===DATES[0]?'（最新）':''}</option>`).join('');
+  const t = todayStr();
+  return DATES.map(d=>`<option value="${d}" ${d===cur?'selected':''}>${d}${d===t?'（今天）':''}</option>`).join('');
 }
 function renderStaffDate(d){ STAFF_DATE=d; renderStaff(); }
 function renderStaff(){
@@ -343,7 +348,7 @@ function renderStaffTable(){
   if(q) rows = rows.filter(r=>[r.shop_name,r.partner_name,r.shop_id,r.brand].some(x=>String(x||'').toLowerCase().includes(q)));
   rows.sort((a,b)=> (+b.pay_amt||0)-(+a.pay_amt||0));
   const tb = document.getElementById('staff-tbody');
-  if(!rows.length){ tb.innerHTML = '<tr><td colspan="9" class="empty">该日期暂无交易数据</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML = `<tr><td colspan="9" class="empty">${STAFF_DATE===todayStr()?'今日暂无交易数据 · 可在上方切换日期查看历史':'该日期暂无交易数据'}</td></tr>`; return; }
   tb.innerHTML = rows.map(r=>{
     const rt = rate(+r.verify_amt||0, +r.pay_amt||0);
     return `<tr>
@@ -419,7 +424,7 @@ function renderDrillTable(){
   if(q) rows = rows.filter(r=>[r.shop_name,r.partner_name,r.shop_id,r.brand].some(x=>String(x||'').toLowerCase().includes(q)));
   rows.sort((a,b)=>(+b.pay_amt||0)-(+a.pay_amt||0));
   const tb = document.getElementById('drill-tbody');
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="9" class="empty">暂无门店数据</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="9" class="empty">${MGR_DATE===todayStr()?'今日暂无门店成交 · 可切换日期查看历史':'暂无门店数据'}</td></tr>`; return; }
   tb.innerHTML = rows.map(r=>{ const rt=rate(+r.verify_amt||0,+r.pay_amt||0);
     return `<tr><td>${esc(r.shop_name)}</td><td>${esc(r.staff_name)}</td><td><span class="cat">${esc(r.category||'—')}</span></td>
       <td class="num">${fmt(r.pay_orders)}</td><td class="num">${fmt(r.verify_orders)}</td>
