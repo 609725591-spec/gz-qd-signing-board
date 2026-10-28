@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<title>广州渠电·签约小二实时交易看板</title>
+<style>
+  :root{
+    --bg:#FFF8F2; --card:#FFFFFF; --ink:#2B2118; --sub:#8A7A6A;
+    --red:#E82030; --gold:#D4A84E; --goldnum:#C8963E; --line:#F0E4D6;
+    --blue:#2C6BED;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 16px 50px}
+
+  /* 登录页 */
+  .login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:40px 30px;width:100%;max-width:380px;text-align:center;box-shadow:0 8px 30px rgba(212,168,78,.12)}
+  .login-badge{width:58px;height:58px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:700;margin:0 auto 16px}
+  .login-card h1{font-size:21px;font-weight:700;margin-bottom:6px}
+  .login-card p{font-size:13px;color:var(--sub);margin-bottom:22px}
+  .code-input{width:100%;padding:14px 16px;font-size:20px;border:1.5px solid var(--line);border-radius:12px;outline:none;text-align:center;letter-spacing:4px;background:#FFFDF8;color:var(--ink);text-transform:uppercase}
+  .code-input:focus{border-color:var(--gold)}
+  .login-btn{width:100%;margin-top:14px;padding:14px;border:none;border-radius:12px;background:var(--red);color:#fff;font-size:16px;font-weight:600;cursor:pointer}
+  .login-btn:disabled{opacity:.5;cursor:not-allowed}
+  .login-hint{margin-top:14px;font-size:12px;color:var(--sub);line-height:1.6}
+  .login-hint b{color:var(--goldnum)}
+  .login-err{margin-top:12px;font-size:13px;color:var(--red);min-height:18px;font-weight:600}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 2px 16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .dot{width:38px;height:38px;border-radius:10px;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex:0 0 auto}
+  .brand h1{font-size:18px;font-weight:700}
+  .brand .pname{font-size:12px;color:var(--sub);margin-top:2px}
+  .meta{text-align:right;font-size:12px;color:var(--sub);line-height:1.7}
+  .meta b{color:var(--goldnum);font-weight:600}
+  .logout{margin-left:8px;padding:6px 12px;font-size:12px;border:1px solid var(--line);background:#fff;border-radius:8px;color:var(--sub);cursor:pointer}
+  .role-chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;margin-left:6px;vertical-align:middle}
+  .role-chip.staff{background:#FDECEF;color:var(--red)}
+  .role-chip.manager{background:#E9F0FE;color:var(--blue)}
+
+  .notice{background:linear-gradient(90deg,var(--red),#FF5A45);color:#fff;font-size:13px;font-weight:600;text-align:center;padding:10px 14px;border-radius:12px;margin-bottom:14px;letter-spacing:.3px}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 15px 13px;position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+  .kpi.red::before{background:var(--red)}
+  .kpi.blue::before{background:var(--blue)}
+  .kpi .lab{font-size:12px;color:var(--sub);margin-bottom:7px}
+  .kpi .val{font-size:25px;font-weight:800;color:var(--goldnum);letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+  .kpi.red .val{color:var(--red)}
+  .kpi.blue .val{color:var(--blue)}
+  .kpi .sub{font-size:11px;color:var(--sub);margin-top:5px}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:14px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .panel-head h2{font-size:15px;font-weight:700}
+  .panel-head h2 span{color:var(--sub);font-weight:400;font-size:12px;margin-left:6px}
+  .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .search{padding:9px 12px;font-size:13px;border:1px solid var(--line);border-radius:8px;outline:none;width:210px;background:#FFFDF8}
+  .btn{padding:9px 14px;font-size:13px;border:none;border-radius:8px;background:var(--red);color:#fff;cursor:pointer;font-weight:600}
+  .btn.ghost{background:#fff;color:var(--sub);border:1px solid var(--line)}
+  select.search{width:auto;cursor:pointer}
+
+  .tbl-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}
+  th{background:#FFF3E6;color:#7A5A20;font-weight:600;text-align:left;padding:10px;white-space:nowrap;border-bottom:1px solid var(--line);position:sticky;top:0}
+  td{padding:10px;border-bottom:1px solid #FAF3EA;white-space:nowrap;color:var(--ink)}
+  tr:hover td{background:#FFFBF5}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.num{font-weight:600;color:var(--goldnum)}
+  .rate{display:inline-block;min-width:52px;text-align:center;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:600}
+  .rate.hi{background:#E6F6EC;color:#1B8A4B}
+  .rate.mid{background:#FEF4E3;color:#B8791C}
+  .rate.lo{background:#FDEAEA;color:#C8202E}
+  tr.clickable{cursor:pointer}
+  tr.active td{background:#FFF0F2}
+  tr.active td:first-child{box-shadow:inset 3px 0 0 var(--red)}
+  .cat{font-size:11px;padding:2px 8px;border-radius:6px;background:#F3EEE7;color:#7A6A58}
+  .empty{padding:34px;text-align:center;color:var(--sub);font-size:13px}
+  .foot{margin-top:14px;font-size:11px;color:var(--sub);text-align:center;line-height:1.8}
+  .hidden{display:none!important}
+  .loading{padding:40px;text-align:center;color:var(--sub);font-size:14px}
+
+  /* ===== 手机端适配（真机窄屏自动加 .mobile） ===== */
+  html,body{max-width:100%;overflow-x:hidden}
+  .board{max-width:100%;overflow-x:hidden}
+  .board.mobile .wrap{padding:14px 12px 40px;max-width:100%;width:100%;overflow-x:hidden}
+  .board.mobile .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .board.mobile .kpi{min-width:0}
+  .board.mobile .kpi .val{font-size:22px}
+  .board.mobile header{padding:2px 0 12px}
+  .board.mobile .brand{min-width:0}
+  .board.mobile .brand h1{font-size:16px}
+  .board.mobile .meta{text-align:left;width:100%;font-size:11px;display:flex;align-items:center;justify-content:space-between}
+  .board.mobile .notice{font-size:12px;white-space:normal;word-break:break-word}
+  .board.mobile .panel{padding:12px;min-width:0;max-width:100%}
+  .board.mobile .panel-head{flex-direction:column;align-items:stretch;gap:10px}
+  .board.mobile .tools{justify-content:space-between;flex-wrap:wrap}
+  .board.mobile .search{width:100%;flex:1;min-width:0}
+  .board.mobile table{min-width:600px;font-size:12.5px}
+  .board.mobile .tbl-scroll{max-width:100%;overflow-x:auto}
+  .board.mobile th:first-child,.board.mobile td:first-child{position:sticky;left:0;background:#FFF3E6;z-index:2;box-shadow:1px 0 0 var(--line)}
+  .board.mobile td:first-child{background:#fff}
+  .board.mobile tr.active td:first-child{background:#FFF0F2}
+  .board.mobile .tbl-scroll{max-height:56vh;overflow-y:auto}
+  .board.mobile .btn,.board.mobile .logout{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  .board.mobile tr.clickable td{padding-top:13px;padding-bottom:13px}
+</style>
+</head>
+<body>
+<div class="board" id="board">
+
+  <!-- ========== 登录页 ========== -->
+  <section id="v-login" class="login">
+    <div class="login-card">
+      <div class="login-badge">渠</div>
+      <h1 id="lg-title">广州渠电·签约小二看板</h1>
+      <p>请输入您的专属 8 位权限码</p>
+      <input class="code-input" id="code" maxlength="8" placeholder="●●●●●●●●" autocomplete="off" inputmode="text">
+      <button class="login-btn" id="login-btn" onclick="doLogin()">进入看板</button>
+      <div class="login-err" id="login-err"></div>
+      <div class="login-hint">
+        权限码由对接人发放，与「服务商 + 本人」绑定，永久不变。<br>
+        字符已剔除易混的 <b>0/O、1/l/I</b>；如提示失效请联系对接人。
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 签约小二视图 ========== -->
+  <section id="v-staff" class="wrap hidden">
+    <header>
+      <div class="brand">
+        <div class="dot">渠</div>
+        <div>
+          <h1>广州渠电·签约小二看板<span class="role-chip staff">签约小二</span></h1>
+          <div class="pname" id="staff-pname">—</div>
+        </div>
+      </div>
+      <div class="meta">
+        <span>数据日期 <b id="staff-date">—</b>　|　更新 <b id="staff-upd">—</b>（每2小时）</span>
+        <button class="logout" onclick="logout()">退出</button>
+      </div>
+    </header>
+    <div class="notice">📍 数据范围：广州 · 渠道团队 · 当日 00:00 起实时快照</div>
+    <div class="kpis" id="staff-kpis"></div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>门店交易明细<span id="staff-tbl-sub"></span></h2>
+        <div class="tools">
+          <select class="search" id="staff-date-sel" onchange="renderStaffDate(this.value)"></select>
+          <input class="search" id="staff-search" placeholder="搜索门店名/商户名/门店ID…" oninput="renderStaffTable()">
+          <button class="btn" onclick="exportCSV('staff')">导出CSV</button>
+        </div>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr>
+            <th>门店名称</th><th>品类</th><th class="num">支付金额</th><th class="num">核销金额</th><th class="num">核销率</th><th class="num">支付订单</th><th>门店ID</th><th>商户主体</th>
+          </tr></thead>
+          <tbody id="staff-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="foot">数据为实时口径，可能存在微小波动或延迟，仅用于经营参考。<br>核销率=核销金额÷支付金额，仅在明细展示。</div>
+  </section>
+
+  <!-- ========== 服务商负责人视图 ========== -->
+  <section id="v-manager" class="wrap hidden">
+    <header>
+      <div class="brand">
+        <div class="dot">渠</div>
+        <div>
+          <h1>广州渠电·签约小二看板<span class="role-chip manager">服务商负责人</span></h1>
+          <div class="pname" id="mgr-pname">—</div>
+        </div>
+      </div>
+      <div class="meta">
+        <span>数据日期 <b id="mgr-date">—</b>　|　更新 <b id="mgr-upd">—</b>（每2小时）</span>
+        <button class="logout" onclick="logout()">退出</button>
+      </div>
+    </header>
+    <div class="notice">🏢 负责人码可查看全司数据，并按签约小二下钻</div>
+    <div class="kpis" id="mgr-kpis"></div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>分小二汇总<span>（点击任意一行下钻门店明细）</span></h2>
+        <div class="tools">
+          <select class="search" id="mgr-date-sel" onchange="renderMgrDate(this.value)"></select>
+          <button class="btn" onclick="exportCSV('mgr')">导出全司CSV</button>
+        </div>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr>
+            <th>签约小二</th><th class="num">交易门店数</th><th class="num">支付金额</th><th class="num">核销金额</th><th class="num">核销率</th><th class="num">支付订单量</th>
+          </tr></thead>
+          <tbody id="mgr-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2 id="drill-title">门店明细<span>（全司）</span></h2>
+        <div class="tools">
+          <select class="search" id="mgr-select" onchange="drill(this.value)"></select>
+          <input class="search" id="mgr-search" placeholder="搜索门店名/商户名/门店ID…" oninput="renderDrillTable()">
+          <button class="btn ghost" onclick="exportCSV('drill')">导出当前CSV</button>
+        </div>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr>
+            <th>门店名称</th><th>签约小二</th><th>品类</th><th class="num">支付金额</th><th class="num">核销金额</th><th class="num">核销率</th><th>门店ID</th>
+          </tr></thead>
+          <tbody id="drill-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="foot">负责人视图默认展示全司；下钻后仅显示所选小二门店。<br>数据为实时口径，可能存在微小波动或延迟。</div>
+  </section>
+
+</div>
+
+<script>
+// ===== 部署时替换的配置 =====
+const CONFIG = {
+  SUPABASE_URL: "https://vtslvpfxjrflutorfryq.supabase.co",
+  ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0c2x2cGZ4anJmbHV0b3JmcnlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxOTkzMjEsImV4cCI6MjA5Nzc3NTMyMX0.SeW0gTgIAYEDCZawSU65XNbp--L3CJ3jw7XntymKzdQ",
+  READ_RPC: "gz_board_read",
+  INFO_RPC: "gz_code_info",
+  P_DAYS: 30,
+  TITLE: "广州渠电·签约小二实时交易看板"
+};
+
+// ===== 运行时状态 =====
+let SESSION = null;   // {code, role, provider_name, staff_name, display_name, region, sub_region}
+let ROWS = [];        // gz_board_read 返回的门店日汇总
+let DATES = [];       // 出现的日期(降序)
+let STAFF_DATE = null, MGR_DATE = null, DRILL_STAFF = 'all';
+
+const fmt = n => Number(n||0).toLocaleString('zh-CN',{maximumFractionDigits:0});
+const fmt2 = n => Number(n||0).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const rate = (ver,pay) => pay>0 ? Math.round(ver/pay*1000)/10 : 0;
+const rateCls = r => r>=70?'hi':(r>=50?'mid':'lo');
+const rateHtml = r => `<span class="rate ${rateCls(r)}">${r}%</span>`;
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function rpc(fn, args){
+  const r = await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/rpc/'+fn, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':CONFIG.ANON_KEY,'Authorization':'Bearer '+CONFIG.ANON_KEY},
+    body: JSON.stringify(args)
+  });
+  if(!r.ok){ const t = await r.text(); throw new Error('RPC '+fn+' '+r.status+': '+t.slice(0,200)); }
+  return r.json();
+}
+
+// ===== 登录 =====
+async function doLogin(){
+  const code = (document.getElementById('code').value||'').trim().toUpperCase();
+  const errEl = document.getElementById('login-err');
+  const btn = document.getElementById('login-btn');
+  errEl.textContent = '';
+  if(code.length !== 8){ errEl.textContent = '请输入 8 位权限码'; return; }
+  btn.disabled = true; btn.textContent = '验证中…';
+  try{
+    const info = await rpc(CONFIG.INFO_RPC, { p_code: code });
+    if(!info || !info.valid){
+      errEl.textContent = (info && info.reason==='inactive')
+        ? '该权限码已停用，请联系对接人'
+        : '权限码无效或暂无数据';
+      btn.disabled=false; btn.textContent='进入看板'; return;
+    }
+    SESSION = Object.assign({code}, info);
+    const rows = await rpc(CONFIG.READ_RPC, { p_code: code, p_days: CONFIG.P_DAYS });
+    ROWS = Array.isArray(rows)? rows : [];
+    btn.disabled=false; btn.textContent='进入看板';
+    enterBoard();
+  }catch(e){
+    btn.disabled=false; btn.textContent='进入看板';
+    const msg = String(e.message||e);
+    errEl.textContent = /fetch|network|Failed/i.test(msg)
+      ? '网络不通，请更换网络或浏览器后重试'
+      : '登录失败：'+msg.slice(0,80);
+  }
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!document.getElementById('v-login').classList.contains('hidden')) doLogin(); });
+
+function logout(){ SESSION=null; ROWS=[]; DATES=[]; document.getElementById('code').value=''; setView('login'); }
+
+function computeDates(){
+  const set = [...new Set(ROWS.map(r=>r.stat_date))].sort((a,b)=>a<b?1:-1);
+  DATES = set.length? set : [todayStr()];
+}
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function updTime(){
+  let mx=''; ROWS.forEach(r=>{ if(r.pulled_at && r.pulled_at>mx) mx=r.pulled_at; });
+  if(!mx) return '—';
+  const d=new Date(mx); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+function enterBoard(){
+  computeDates();
+  if(SESSION.role==='manager'){ MGR_DATE=DATES[0]; setView('manager'); renderMgr(); }
+  else { STAFF_DATE=DATES[0]; setView('staff'); renderStaff(); }
+}
+
+function setView(v){
+  ['login','staff','manager'].forEach(x=>document.getElementById('v-'+x).classList.toggle('hidden', x!==v));
+  window.scrollTo(0,0);
+}
+
+// ===== 签约小二视图 =====
+function dateOptions(sel, cur){
+  return DATES.map(d=>`<option value="${d}" ${d===cur?'selected':''}>${d}${d===DATES[0]?'（最新）':''}</option>`).join('');
+}
+function renderStaffDate(d){ STAFF_DATE=d; renderStaff(); }
+function renderStaff(){
+  document.getElementById('staff-pname').textContent = (SESSION.staff_name||'')+'　·　'+(SESSION.provider_name||'');
+  document.getElementById('staff-date').textContent = STAFF_DATE;
+  document.getElementById('staff-upd').textContent = updTime();
+  document.getElementById('staff-date-sel').innerHTML = dateOptions('staff',STAFF_DATE);
+  const rows = ROWS.filter(r=>r.stat_date===STAFF_DATE);
+  const pay = rows.reduce((a,r)=>a+ +r.pay_amt||0,0);
+  const ver = rows.reduce((a,r)=>a+ +r.verify_amt||0,0);
+  const ord = rows.reduce((a,r)=>a+ +r.pay_orders||0,0);
+  const shops = new Set(rows.map(r=>r.shop_id)).size;
+  document.getElementById('staff-kpis').innerHTML = `
+    <div class="kpi red"><div class="lab">支付GMV（元）</div><div class="val">${fmt(pay)}</div><div class="sub">本人名下门店</div></div>
+    <div class="kpi"><div class="lab">核销GMV（元）</div><div class="val">${fmt(ver)}</div><div class="sub">核销率 ${rate(ver,pay)}%</div></div>
+    <div class="kpi blue"><div class="lab">交易门店数</div><div class="val">${shops}</div><div class="sub">有成交门店</div></div>
+    <div class="kpi"><div class="lab">支付订单量</div><div class="val">${fmt(ord)}</div><div class="sub">笔</div></div>`;
+  document.getElementById('staff-tbl-sub').textContent = `（${STAFF_DATE} · 本人名下 · ${rows.length} 家门店）`;
+  renderStaffTable();
+}
+function renderStaffTable(){
+  const q = (document.getElementById('staff-search').value||'').trim().toLowerCase();
+  let rows = ROWS.filter(r=>r.stat_date===STAFF_DATE);
+  if(q) rows = rows.filter(r=>[r.shop_name,r.partner_name,r.shop_id,r.brand].some(x=>String(x||'').toLowerCase().includes(q)));
+  rows.sort((a,b)=> (+b.pay_amt||0)-(+a.pay_amt||0));
+  const tb = document.getElementById('staff-tbody');
+  if(!rows.length){ tb.innerHTML = '<tr><td colspan="8" class="empty">该日期暂无交易数据</td></tr>'; return; }
+  tb.innerHTML = rows.map(r=>{
+    const rt = rate(+r.verify_amt||0, +r.pay_amt||0);
+    return `<tr>
+      <td>${esc(r.shop_name)}</td><td><span class="cat">${esc(r.category||r.category_l1||'—')}</span></td>
+      <td class="num">${fmt2(r.pay_amt)}</td><td class="num">${fmt2(r.verify_amt)}</td>
+      <td class="num">${rateHtml(rt)}</td><td class="num">${fmt(r.pay_orders)}</td>
+      <td>${esc(r.shop_id)}</td><td>${esc(r.partner_name)}</td></tr>`;
+  }).join('');
+}
+
+// ===== 负责人视图 =====
+function renderMgrDate(d){ MGR_DATE=d; DRILL_STAFF='all'; renderMgr(); }
+function renderMgr(){
+  document.getElementById('mgr-pname').textContent = (SESSION.provider_name||'')+'　·　全司视图';
+  document.getElementById('mgr-date').textContent = MGR_DATE;
+  document.getElementById('mgr-upd').textContent = updTime();
+  document.getElementById('mgr-date-sel').innerHTML = dateOptions('mgr',MGR_DATE);
+  const rows = ROWS.filter(r=>r.stat_date===MGR_DATE);
+  const pay = rows.reduce((a,r)=>a+ +r.pay_amt||0,0);
+  const ver = rows.reduce((a,r)=>a+ +r.verify_amt||0,0);
+  const shops = new Set(rows.map(r=>r.shop_id)).size;
+  const staffSet = new Set(rows.map(r=>r.staff_name));
+  // 全期在册小二（近P_DAYS出现过）
+  const staffAll = new Set(ROWS.map(r=>r.staff_name));
+  document.getElementById('mgr-kpis').innerHTML = `
+    <div class="kpi red"><div class="lab">全司支付GMV（元）</div><div class="val">${fmt(pay)}</div><div class="sub">${staffSet.size} 位小二当日合计</div></div>
+    <div class="kpi"><div class="lab">全司核销GMV（元）</div><div class="val">${fmt(ver)}</div><div class="sub">核销率 ${rate(ver,pay)}%</div></div>
+    <div class="kpi blue"><div class="lab">在册签约小二</div><div class="val">${staffAll.size}</div><div class="sub">近${CONFIG.P_DAYS}天有交易</div></div>
+    <div class="kpi blue"><div class="lab">全司交易门店数</div><div class="val">${shops}</div><div class="sub">当日有成交门店</div></div>`;
+  renderMgrSummary();
+  const sel = document.getElementById('mgr-select');
+  sel.innerHTML = '<option value="all">全部小二（全司）</option>' + [...staffAll].sort().map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  sel.value = DRILL_STAFF;
+  renderDrillTable();
+}
+function renderMgrSummary(){
+  const rows = ROWS.filter(r=>r.stat_date===MGR_DATE);
+  const byStaff = {};
+  rows.forEach(r=>{ const s=r.staff_name||'—'; byStaff[s]=byStaff[s]||{staff:s,shops:new Set(),pay:0,ver:0,ord:0};
+    byStaff[s].shops.add(r.shop_id); byStaff[s].pay+= +r.pay_amt||0; byStaff[s].ver+= +r.verify_amt||0; byStaff[s].ord+= +r.pay_orders||0; });
+  const arr = Object.values(byStaff).sort((a,b)=>b.pay-a.pay);
+  const tb = document.getElementById('mgr-tbody');
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="6" class="empty">该日期全司暂无交易数据</td></tr>'; return; }
+  tb.innerHTML = arr.map(a=>{ const rt=rate(a.ver,a.pay);
+    return `<tr class="clickable ${DRILL_STAFF===a.staff?'active':''}" onclick="drill('${esc(a.staff)}')">
+      <td>${esc(a.staff)}</td><td class="num">${a.shops.size}</td><td class="num">${fmt2(a.pay)}</td>
+      <td class="num">${fmt2(a.ver)}</td><td class="num">${rateHtml(rt)}</td><td class="num">${fmt(a.ord)}</td></tr>`; }).join('');
+}
+function drill(staff){
+  DRILL_STAFF = staff;
+  const sel = document.getElementById('mgr-select'); if(sel && sel.value!==staff) sel.value=staff;
+  document.getElementById('drill-title').innerHTML = staff==='all' ? '门店明细<span>（全司）</span>' : `门店明细<span>（${esc(staff)}）</span>`;
+  renderMgrSummary();
+  renderDrillTable();
+}
+function renderDrillTable(){
+  const q = (document.getElementById('mgr-search').value||'').trim().toLowerCase();
+  let rows = ROWS.filter(r=>r.stat_date===MGR_DATE);
+  if(DRILL_STAFF!=='all') rows = rows.filter(r=>r.staff_name===DRILL_STAFF);
+  if(q) rows = rows.filter(r=>[r.shop_name,r.partner_name,r.shop_id,r.brand].some(x=>String(x||'').toLowerCase().includes(q)));
+  rows.sort((a,b)=>(+b.pay_amt||0)-(+a.pay_amt||0));
+  const tb = document.getElementById('drill-tbody');
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无门店数据</td></tr>'; return; }
+  tb.innerHTML = rows.map(r=>{ const rt=rate(+r.verify_amt||0,+r.pay_amt||0);
+    return `<tr><td>${esc(r.shop_name)}</td><td>${esc(r.staff_name)}</td><td><span class="cat">${esc(r.category||'—')}</span></td>
+      <td class="num">${fmt2(r.pay_amt)}</td><td class="num">${fmt2(r.verify_amt)}</td><td class="num">${rateHtml(rt)}</td><td>${esc(r.shop_id)}</td></tr>`; }).join('');
+}
+
+// ===== CSV 导出 =====
+function exportCSV(which){
+  let rows=[], head=[], name='';
+  if(which==='staff'){ rows=ROWS.filter(r=>r.stat_date===STAFF_DATE); head=['数据日期','门店名称','品类','支付金额','核销金额','核销率%','支付订单','门店ID','商户主体']; name='签约小二_'+STAFF_DATE; }
+  else if(which==='mgr'){ rows=ROWS.filter(r=>r.stat_date===MGR_DATE); head=['数据日期','签约小二','门店名称','品类','支付金额','核销金额','核销率%','支付订单','门店ID']; name='全司_'+MGR_DATE; }
+  else { rows=ROWS.filter(r=>r.stat_date===MGR_DATE && (DRILL_STAFF==='all'||r.staff_name===DRILL_STAFF)); head=['数据日期','签约小二','门店名称','品类','支付金额','核销金额','核销率%','门店ID']; name='门店明细_'+MGR_DATE; }
+  const body = rows.map(r=>{ const rt=rate(+r.verify_amt||0,+r.pay_amt||0);
+    const base=[r.stat_date, r.staff_name, r.shop_name, r.category||'', r.pay_amt, r.verify_amt, rt, r.pay_orders, r.shop_id, r.partner_name];
+    if(which==='staff') return [r.stat_date,r.shop_name,r.category||'',r.pay_amt,r.verify_amt,rt,r.pay_orders,r.shop_id,r.partner_name];
+    if(which==='drill') return [r.stat_date,r.staff_name,r.shop_name,r.category||'',r.pay_amt,r.verify_amt,rt,r.shop_id];
+    return [r.stat_date,r.staff_name,r.shop_name,r.category||'',r.pay_amt,r.verify_amt,rt,r.pay_orders,r.shop_id];
+  });
+  const csv = '\uFEFF'+[head,...body].map(a=>a.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=name+'.csv'; a.click();
+}
+
+// ===== 手机端自适应 =====
+function applyDevice(){
+  const mobile = window.matchMedia && window.matchMedia('(max-width:640px)').matches;
+  document.getElementById('board').classList.toggle('mobile', mobile);
+}
+applyDevice();
+if(window.matchMedia){ const mq=window.matchMedia('(max-width:640px)'); mq.addEventListener&&mq.addEventListener('change',applyDevice); }
+document.getElementById('lg-title').textContent = CONFIG.TITLE;
+</script>
+</body>
+</html>
