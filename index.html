@@ -278,6 +278,7 @@ async function doLogin(){
     SESSION = Object.assign({code}, info);
     const rows = await rpc(CONFIG.READ_RPC, { p_code: code, p_days: CONFIG.P_DAYS });
     ROWS = Array.isArray(rows)? rows : [];
+    try{ localStorage.setItem('gz_board_code', code); }catch(_){}   // 记住权限码，刷新后自动登录
     btn.disabled=false; btn.textContent='进入看板';
     enterBoard();
   }catch(e){
@@ -290,7 +291,7 @@ async function doLogin(){
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!document.getElementById('v-login').classList.contains('hidden')) doLogin(); });
 
-function logout(){ SESSION=null; ROWS=[]; DATES=[]; document.getElementById('code').value=''; setView('login'); }
+function logout(){ SESSION=null; ROWS=[]; DATES=[]; try{ localStorage.removeItem('gz_board_code'); }catch(_){} document.getElementById('code').value=''; setView('login'); }
 
 function computeDates(){
   // 始终包含真实今天：即便当前身份今天暂无成交，也把今天放在最前，避免默认回退到昨天造成误读
@@ -453,6 +454,37 @@ function applyDevice(){
 }
 applyDevice();
 if(window.matchMedia){ const mq=window.matchMedia('(max-width:640px)'); mq.addEventListener&&mq.addEventListener('change',applyDevice); }
+// ===== 刷新后自动登录（记住权限码） =====
+async function tryAutoLogin(){
+  let code='';
+  try{ code=(localStorage.getItem('gz_board_code')||'').trim().toUpperCase(); }catch(_){ return; }
+  if(code.length!==8) return;
+  const btn=document.getElementById('login-btn');
+  const errEl=document.getElementById('login-err');
+  const inp=document.getElementById('code');
+  if(inp) inp.value=code;
+  if(btn){ btn.disabled=true; btn.textContent='自动登录中…'; }
+  try{
+    const info = await rpc(CONFIG.INFO_RPC,{ p_code: code });
+    if(!info || !info.valid){                       // 权限码失效/停用：清除记忆，停在登录页
+      try{ localStorage.removeItem('gz_board_code'); }catch(_){}
+      if(inp) inp.value='';
+      if(errEl) errEl.textContent='';
+      if(btn){ btn.disabled=false; btn.textContent='进入看板'; }
+      return;
+    }
+    SESSION = Object.assign({code}, info);
+    const rows = await rpc(CONFIG.READ_RPC,{ p_code: code, p_days: CONFIG.P_DAYS });
+    ROWS = Array.isArray(rows)? rows : [];
+    if(btn){ btn.disabled=false; btn.textContent='进入看板'; }
+    enterBoard();
+  }catch(e){                                        // 网络等异常：保留记忆，停登录页可手动重试
+    SESSION=null; ROWS=[];
+    if(errEl) errEl.textContent='自动登录未完成，请点击「进入看板」重试';
+    if(btn){ btn.disabled=false; btn.textContent='进入看板'; }
+  }
+}
+tryAutoLogin();
 document.getElementById('lg-title').textContent = CONFIG.TITLE;
 </script>
 </body>
