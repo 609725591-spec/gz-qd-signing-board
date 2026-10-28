@@ -355,6 +355,13 @@ function renderStaffTable(){
 }
 
 // ===== 负责人视图 =====
+// 在册签约小二花名册（来自 gz_code_info.roster）∪ 数据中出现过的小二（兜底）
+function rosterAll(){
+  const base = Array.isArray(SESSION && SESSION.roster) ? SESSION.roster.slice() : [];
+  const set = new Set(base.filter(Boolean));
+  ROWS.forEach(r=>{ if(r.staff_name) set.add(r.staff_name); });
+  return [...set].sort((a,b)=> String(a).localeCompare(String(b),'zh-CN'));
+}
 function renderMgrDate(d){ MGR_DATE=d; DRILL_STAFF='all'; renderMgr(); }
 function renderMgr(){
   document.getElementById('mgr-pname').textContent = (SESSION.provider_name||'')+'　·　全司视图';
@@ -365,31 +372,35 @@ function renderMgr(){
   const pay = rows.reduce((a,r)=>a+ +r.pay_amt||0,0);
   const ver = rows.reduce((a,r)=>a+ +r.verify_amt||0,0);
   const shops = new Set(rows.map(r=>r.shop_id)).size;
-  const staffSet = new Set(rows.map(r=>r.staff_name));
-  // 全期在册小二（近P_DAYS出现过）
-  const staffAll = new Set(ROWS.map(r=>r.staff_name));
+  const staffSet = new Set(rows.map(r=>r.staff_name).filter(Boolean));
+  // 在册全员：以花名册为准（零单小二也在册）
+  const staffAll = rosterAll();
   document.getElementById('mgr-kpis').innerHTML = `
-    <div class="kpi red"><div class="lab">全司支付GMV（元）</div><div class="val">${fmt(pay)}</div><div class="sub">${staffSet.size} 位小二当日合计</div></div>
+    <div class="kpi red"><div class="lab">全司支付GMV（元）</div><div class="val">${fmt(pay)}</div><div class="sub">${staffSet.size} 位小二当日有交易</div></div>
     <div class="kpi"><div class="lab">全司核销GMV（元）</div><div class="val">${fmt(ver)}</div><div class="sub">核销率 ${rate(ver,pay)}%</div></div>
-    <div class="kpi blue"><div class="lab">在册签约小二</div><div class="val">${staffAll.size}</div><div class="sub">近${CONFIG.P_DAYS}天有交易</div></div>
+    <div class="kpi blue"><div class="lab">在册签约小二</div><div class="val">${staffAll.length}</div><div class="sub">全司花名册 · ${staffAll.length-staffSet.size} 人当日零单</div></div>
     <div class="kpi blue"><div class="lab">全司交易门店数</div><div class="val">${shops}</div><div class="sub">当日有成交门店</div></div>`;
   renderMgrSummary();
   const sel = document.getElementById('mgr-select');
-  sel.innerHTML = '<option value="all">全部小二（全司）</option>' + [...staffAll].sort().map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  sel.innerHTML = '<option value="all">全部小二（全司）</option>' + staffAll.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
   sel.value = DRILL_STAFF;
   renderDrillTable();
 }
 function renderMgrSummary(){
   const rows = ROWS.filter(r=>r.stat_date===MGR_DATE);
   const byStaff = {};
+  // 先按花名册铺满全员（零单小二也占一行，显示 0）
+  rosterAll().forEach(s=>{ byStaff[s]={staff:s,shops:new Set(),pay:0,ver:0,ord:0}; });
   rows.forEach(r=>{ const s=r.staff_name||'—'; byStaff[s]=byStaff[s]||{staff:s,shops:new Set(),pay:0,ver:0,ord:0};
     byStaff[s].shops.add(r.shop_id); byStaff[s].pay+= +r.pay_amt||0; byStaff[s].ver+= +r.verify_amt||0; byStaff[s].ord+= +r.pay_orders||0; });
   const arr = Object.values(byStaff).sort((a,b)=>b.pay-a.pay);
   const tb = document.getElementById('mgr-tbody');
   if(!arr.length){ tb.innerHTML='<tr><td colspan="6" class="empty">该日期全司暂无交易数据</td></tr>'; return; }
   tb.innerHTML = arr.map(a=>{ const rt=rate(a.ver,a.pay);
+    const zero = (a.pay===0 && a.ord===0);
+    const zchip = zero ? ' <span style="display:inline-block;margin-left:4px;padding:0 5px;border-radius:6px;background:#F2F3F5;color:#8A9099;font-size:11px;line-height:16px;">零单</span>' : '';
     return `<tr class="clickable ${DRILL_STAFF===a.staff?'active':''}" onclick="drill('${esc(a.staff)}')">
-      <td>${esc(a.staff)}</td><td class="num">${a.shops.size}</td><td class="num">${fmt2(a.pay)}</td>
+      <td>${esc(a.staff)}${zchip}</td><td class="num">${a.shops.size}</td><td class="num">${fmt2(a.pay)}</td>
       <td class="num">${fmt2(a.ver)}</td><td class="num">${rateHtml(rt)}</td><td class="num">${fmt(a.ord)}</td></tr>`; }).join('');
 }
 function drill(staff){
