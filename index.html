@@ -159,7 +159,7 @@
       <div class="tbl-scroll">
         <table>
           <thead><tr>
-            <th>门店名称</th><th>品类</th><th class="num">支付金额</th><th class="num">核销金额</th><th class="num">核销率</th><th class="num">支付订单</th><th>门店ID</th><th>商户主体</th>
+            <th>门店名称</th><th>品类</th><th class="num">支付订单</th><th class="num">核销订单</th><th class="num">支付金额</th><th class="num">核销金额</th><th class="num">核销率</th><th>门店ID</th><th>商户主体</th>
           </tr></thead>
           <tbody id="staff-tbody"></tbody>
         </table>
@@ -196,7 +196,7 @@
       <div class="tbl-scroll">
         <table>
           <thead><tr>
-            <th>签约小二</th><th class="num">交易门店数</th><th class="num">支付金额</th><th class="num">核销金额</th><th class="num">核销率</th><th class="num">支付订单量</th>
+            <th>签约小二</th><th class="num">交易门店数</th><th class="num">支付订单量</th><th class="num">核销订单量</th><th class="num">支付金额</th><th class="num">核销金额</th><th class="num">核销率</th>
           </tr></thead>
           <tbody id="mgr-tbody"></tbody>
         </table>
@@ -214,7 +214,7 @@
       <div class="tbl-scroll">
         <table>
           <thead><tr>
-            <th>门店名称</th><th>签约小二</th><th>品类</th><th class="num">支付金额</th><th class="num">核销金额</th><th class="num">核销率</th><th>门店ID</th>
+            <th>门店名称</th><th>签约小二</th><th>品类</th><th class="num">支付订单</th><th class="num">核销订单</th><th class="num">支付金额</th><th class="num">核销金额</th><th class="num">核销率</th><th>门店ID</th>
           </tr></thead>
           <tbody id="drill-tbody"></tbody>
         </table>
@@ -343,13 +343,14 @@ function renderStaffTable(){
   if(q) rows = rows.filter(r=>[r.shop_name,r.partner_name,r.shop_id,r.brand].some(x=>String(x||'').toLowerCase().includes(q)));
   rows.sort((a,b)=> (+b.pay_amt||0)-(+a.pay_amt||0));
   const tb = document.getElementById('staff-tbody');
-  if(!rows.length){ tb.innerHTML = '<tr><td colspan="8" class="empty">该日期暂无交易数据</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML = '<tr><td colspan="9" class="empty">该日期暂无交易数据</td></tr>'; return; }
   tb.innerHTML = rows.map(r=>{
     const rt = rate(+r.verify_amt||0, +r.pay_amt||0);
     return `<tr>
       <td>${esc(r.shop_name)}</td><td><span class="cat">${esc(r.category||r.category_l1||'—')}</span></td>
+      <td class="num">${fmt(r.pay_orders)}</td><td class="num">${fmt(r.verify_orders)}</td>
       <td class="num">${fmt2(r.pay_amt)}</td><td class="num">${fmt2(r.verify_amt)}</td>
-      <td class="num">${rateHtml(rt)}</td><td class="num">${fmt(r.pay_orders)}</td>
+      <td class="num">${rateHtml(rt)}</td>
       <td>${esc(r.shop_id)}</td><td>${esc(r.partner_name)}</td></tr>`;
   }).join('');
 }
@@ -390,18 +391,19 @@ function renderMgrSummary(){
   const rows = ROWS.filter(r=>r.stat_date===MGR_DATE);
   const byStaff = {};
   // 先按花名册铺满全员（零单小二也占一行，显示 0）
-  rosterAll().forEach(s=>{ byStaff[s]={staff:s,shops:new Set(),pay:0,ver:0,ord:0}; });
-  rows.forEach(r=>{ const s=r.staff_name||'—'; byStaff[s]=byStaff[s]||{staff:s,shops:new Set(),pay:0,ver:0,ord:0};
-    byStaff[s].shops.add(r.shop_id); byStaff[s].pay+= +r.pay_amt||0; byStaff[s].ver+= +r.verify_amt||0; byStaff[s].ord+= +r.pay_orders||0; });
+  rosterAll().forEach(s=>{ byStaff[s]={staff:s,shops:new Set(),pay:0,ver:0,ord:0,vord:0}; });
+  rows.forEach(r=>{ const s=r.staff_name||'—'; byStaff[s]=byStaff[s]||{staff:s,shops:new Set(),pay:0,ver:0,ord:0,vord:0};
+    byStaff[s].shops.add(r.shop_id); byStaff[s].pay+= +r.pay_amt||0; byStaff[s].ver+= +r.verify_amt||0; byStaff[s].ord+= +r.pay_orders||0; byStaff[s].vord+= +r.verify_orders||0; });
   const arr = Object.values(byStaff).sort((a,b)=>b.pay-a.pay);
   const tb = document.getElementById('mgr-tbody');
-  if(!arr.length){ tb.innerHTML='<tr><td colspan="6" class="empty">该日期全司暂无交易数据</td></tr>'; return; }
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="7" class="empty">该日期全司暂无交易数据</td></tr>'; return; }
   tb.innerHTML = arr.map(a=>{ const rt=rate(a.ver,a.pay);
     const zero = (a.pay===0 && a.ord===0);
     const zchip = zero ? ' <span style="display:inline-block;margin-left:4px;padding:0 5px;border-radius:6px;background:#F2F3F5;color:#8A9099;font-size:11px;line-height:16px;">零单</span>' : '';
     return `<tr class="clickable ${DRILL_STAFF===a.staff?'active':''}" onclick="drill('${esc(a.staff)}')">
-      <td>${esc(a.staff)}${zchip}</td><td class="num">${a.shops.size}</td><td class="num">${fmt2(a.pay)}</td>
-      <td class="num">${fmt2(a.ver)}</td><td class="num">${rateHtml(rt)}</td><td class="num">${fmt(a.ord)}</td></tr>`; }).join('');
+      <td>${esc(a.staff)}${zchip}</td><td class="num">${a.shops.size}</td><td class="num">${fmt(a.ord)}</td><td class="num">${fmt(a.vord)}</td>
+      <td class="num">${fmt2(a.pay)}</td>
+      <td class="num">${fmt2(a.ver)}</td><td class="num">${rateHtml(rt)}</td></tr>`; }).join('');
 }
 function drill(staff){
   DRILL_STAFF = staff;
@@ -417,23 +419,23 @@ function renderDrillTable(){
   if(q) rows = rows.filter(r=>[r.shop_name,r.partner_name,r.shop_id,r.brand].some(x=>String(x||'').toLowerCase().includes(q)));
   rows.sort((a,b)=>(+b.pay_amt||0)-(+a.pay_amt||0));
   const tb = document.getElementById('drill-tbody');
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="7" class="empty">暂无门店数据</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="9" class="empty">暂无门店数据</td></tr>'; return; }
   tb.innerHTML = rows.map(r=>{ const rt=rate(+r.verify_amt||0,+r.pay_amt||0);
     return `<tr><td>${esc(r.shop_name)}</td><td>${esc(r.staff_name)}</td><td><span class="cat">${esc(r.category||'—')}</span></td>
+      <td class="num">${fmt(r.pay_orders)}</td><td class="num">${fmt(r.verify_orders)}</td>
       <td class="num">${fmt2(r.pay_amt)}</td><td class="num">${fmt2(r.verify_amt)}</td><td class="num">${rateHtml(rt)}</td><td>${esc(r.shop_id)}</td></tr>`; }).join('');
 }
 
 // ===== CSV 导出 =====
 function exportCSV(which){
   let rows=[], head=[], name='';
-  if(which==='staff'){ rows=ROWS.filter(r=>r.stat_date===STAFF_DATE); head=['数据日期','门店名称','品类','支付金额','核销金额','核销率%','支付订单','门店ID','商户主体']; name='签约小二_'+STAFF_DATE; }
-  else if(which==='mgr'){ rows=ROWS.filter(r=>r.stat_date===MGR_DATE); head=['数据日期','签约小二','门店名称','品类','支付金额','核销金额','核销率%','支付订单','门店ID']; name='全司_'+MGR_DATE; }
-  else { rows=ROWS.filter(r=>r.stat_date===MGR_DATE && (DRILL_STAFF==='all'||r.staff_name===DRILL_STAFF)); head=['数据日期','签约小二','门店名称','品类','支付金额','核销金额','核销率%','门店ID']; name='门店明细_'+MGR_DATE; }
+  if(which==='staff'){ rows=ROWS.filter(r=>r.stat_date===STAFF_DATE); head=['数据日期','门店名称','品类','支付订单','核销订单','支付金额','核销金额','核销率%','门店ID','商户主体']; name='签约小二_'+STAFF_DATE; }
+  else if(which==='mgr'){ rows=ROWS.filter(r=>r.stat_date===MGR_DATE); head=['数据日期','签约小二','门店名称','品类','支付订单','核销订单','支付金额','核销金额','核销率%','门店ID']; name='全司_'+MGR_DATE; }
+  else { rows=ROWS.filter(r=>r.stat_date===MGR_DATE && (DRILL_STAFF==='all'||r.staff_name===DRILL_STAFF)); head=['数据日期','签约小二','门店名称','品类','支付订单','核销订单','支付金额','核销金额','核销率%','门店ID']; name='门店明细_'+MGR_DATE; }
   const body = rows.map(r=>{ const rt=rate(+r.verify_amt||0,+r.pay_amt||0);
-    const base=[r.stat_date, r.staff_name, r.shop_name, r.category||'', r.pay_amt, r.verify_amt, rt, r.pay_orders, r.shop_id, r.partner_name];
-    if(which==='staff') return [r.stat_date,r.shop_name,r.category||'',r.pay_amt,r.verify_amt,rt,r.pay_orders,r.shop_id,r.partner_name];
-    if(which==='drill') return [r.stat_date,r.staff_name,r.shop_name,r.category||'',r.pay_amt,r.verify_amt,rt,r.shop_id];
-    return [r.stat_date,r.staff_name,r.shop_name,r.category||'',r.pay_amt,r.verify_amt,rt,r.pay_orders,r.shop_id];
+    if(which==='staff') return [r.stat_date,r.shop_name,r.category||'',r.pay_orders,r.verify_orders,r.pay_amt,r.verify_amt,rt,r.shop_id,r.partner_name];
+    if(which==='drill') return [r.stat_date,r.staff_name,r.shop_name,r.category||'',r.pay_orders,r.verify_orders,r.pay_amt,r.verify_amt,rt,r.shop_id];
+    return [r.stat_date,r.staff_name,r.shop_name,r.category||'',r.pay_orders,r.verify_orders,r.pay_amt,r.verify_amt,rt,r.shop_id];
   });
   const csv = '\uFEFF'+[head,...body].map(a=>a.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=name+'.csv'; a.click();
