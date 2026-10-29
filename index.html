@@ -236,6 +236,7 @@ const CONFIG = {
   ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0c2x2cGZ4anJmbHV0b3JmcnlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxOTkzMjEsImV4cCI6MjA5Nzc3NTMyMX0.SeW0gTgIAYEDCZawSU65XNbp--L3CJ3jw7XntymKzdQ",
   READ_RPC: "gz_board_read",
   INFO_RPC: "gz_code_info",
+  LOG_RPC: "gz_log_visit",
   P_DAYS: 30,
   TITLE: "广州渠电·签约小二实时交易看板"
 };
@@ -263,6 +264,12 @@ async function rpc(fn, args){
   return r.json();
 }
 
+// ===== 用量埋点（后台监控每人每日使用频次）：fire-and-forget，失败静默 =====
+function logVisit(ev){
+  if(!SESSION || !SESSION.code) return;
+  try{ rpc(CONFIG.LOG_RPC || 'gz_log_visit', { p_code: SESSION.code, p_event: ev }).catch(()=>{}); }catch(_){}
+}
+
 // ===== 登录 =====
 async function doLogin(){
   const code = (document.getElementById('code').value||'').trim().toUpperCase();
@@ -284,6 +291,7 @@ async function doLogin(){
     ROWS = Array.isArray(rows)? rows : [];
     try{ localStorage.setItem('gz_board_code', code); }catch(_){}   // 记住权限码，刷新后自动登录
     btn.disabled=false; btn.textContent='进入看板';
+    logVisit('login');
     enterBoard();
   }catch(e){
     btn.disabled=false; btn.textContent='进入看板';
@@ -438,6 +446,7 @@ function renderDrillTable(){
 
 // ===== CSV 导出 =====
 function exportCSV(which){
+  logVisit('export');
   let rows=[], head=[], name='';
   if(which==='staff'){ rows=ROWS.filter(r=>r.stat_date===STAFF_DATE); head=['数据日期','门店名称','品类','支付订单','核销订单','支付金额','核销金额','核销率%','门店ID','商户主体']; name='签约小二_'+STAFF_DATE; }
   else if(which==='mgr'){ rows=ROWS.filter(r=>r.stat_date===MGR_DATE); head=['数据日期','签约小二','门店名称','品类','支付订单','核销订单','支付金额','核销金额','核销率%','门店ID']; name='全司_'+MGR_DATE; }
@@ -481,6 +490,7 @@ async function tryAutoLogin(){
     const rows = await rpc(CONFIG.READ_RPC,{ p_code: code, p_days: CONFIG.P_DAYS });
     ROWS = Array.isArray(rows)? rows : [];
     if(btn){ btn.disabled=false; btn.textContent='进入看板'; }
+    logVisit('auto');
     enterBoard();
   }catch(e){                                        // 网络等异常：保留记忆，停登录页可手动重试
     SESSION=null; ROWS=[];
